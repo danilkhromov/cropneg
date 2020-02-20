@@ -151,7 +151,7 @@ func findExposureBounds(wndw *gocv.Window, img *gocv.Mat, showOutputWindow bool)
 	gocv.BilateralFilter(gray, &blGray, 11, 17, 17)
 
 	ignoreMask := gocv.NewMat()
-	gocv.Threshold(blGray, &ignoreMask, 250, 255, gocv.ThresholdBinary)
+	gocv.Threshold(blGray, &ignoreMask, 240, 255, gocv.ThresholdBinary)
 
 	gocv.Dilate(
 		ignoreMask,
