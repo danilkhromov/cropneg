@@ -63,15 +63,7 @@ func normaliseRectRotation(rawRects []gocv.RotatedRect) {
 
 func medianRect(rects []gocv.RotatedRect) gocv.RotatedRect {
 
-	/*if len(rects) == 0 {
-		return nil
-	}*/
-
 	normaliseRectRotation(rects)
-
-	sort.Slice(rects, func(i, j int) bool {
-		return false
-	})
 
 	var zeroXs, zeroYs, oneXs, oneYs, twoXs, twoYs, threeXs, threeYs []float64
 	var minBXs, minBYs []float64
@@ -121,32 +113,32 @@ func medianRect(rects []gocv.RotatedRect) gocv.RotatedRect {
 	return gocv.RotatedRect{
 		Contour: []image.Point{
 			image.Pt(
-				int(stat.Quantile(0.5, stat.Empirical, zeroXs, nil)),
-				int(stat.Quantile(0.5, stat.Empirical, zeroYs, nil))),
+				int(stat.Quantile(0.5, stat.LinInterp, zeroXs, nil)),
+				int(stat.Quantile(0.5, stat.LinInterp, zeroYs, nil))),
 			image.Pt(
-				int(stat.Quantile(0.5, stat.Empirical, oneXs, nil)),
-				int(stat.Quantile(0.5, stat.Empirical, oneYs, nil))),
+				int(stat.Quantile(0.5, stat.LinInterp, oneXs, nil)),
+				int(stat.Quantile(0.5, stat.LinInterp, oneYs, nil))),
 			image.Pt(
-				int(stat.Quantile(0.5, stat.Empirical, twoXs, nil)),
-				int(stat.Quantile(0.5, stat.Empirical, twoYs, nil))),
+				int(stat.Quantile(0.5, stat.LinInterp, twoXs, nil)),
+				int(stat.Quantile(0.5, stat.LinInterp, twoYs, nil))),
 			image.Pt(
-				int(stat.Quantile(0.5, stat.Empirical, threeXs, nil)),
-				int(stat.Quantile(0.5, stat.Empirical, threeYs, nil))),
+				int(stat.Quantile(0.5, stat.LinInterp, threeXs, nil)),
+				int(stat.Quantile(0.5, stat.LinInterp, threeYs, nil))),
 		},
 		BoundingRect: image.Rectangle{
 			Min: image.Pt(
-				int(stat.Quantile(0.5, stat.Empirical, minBXs, nil)),
-				int(stat.Quantile(0.5, stat.Empirical, minBYs, nil))),
+				int(stat.Quantile(0.5, stat.LinInterp, minBXs, nil)),
+				int(stat.Quantile(0.5, stat.LinInterp, minBYs, nil))),
 			Max: image.Pt(
-				int(stat.Quantile(0.5, stat.Empirical, maxBXs, nil)),
-				int(stat.Quantile(0.5, stat.Empirical, maxBys, nil))),
+				int(stat.Quantile(0.5, stat.LinInterp, maxBXs, nil)),
+				int(stat.Quantile(0.5, stat.LinInterp, maxBys, nil))),
 		},
 		Center: image.Pt(
-			int(stat.Quantile(0.5, stat.Empirical, cntrXs, nil)),
-			int(stat.Quantile(0.5, stat.Empirical, cntrYs, nil))),
-		Width:  int(stat.Quantile(0.5, stat.Empirical, widths, nil)),
-		Height: int(stat.Quantile(0.5, stat.Empirical, heights, nil)),
-		Angle:  stat.Quantile(0.5, stat.Empirical, angles, nil),
+			int(stat.Quantile(0.5, stat.LinInterp, cntrXs, nil)),
+			int(stat.Quantile(0.5, stat.LinInterp, cntrYs, nil))),
+		Width:  int(stat.Quantile(0.5, stat.LinInterp, widths, nil)),
+		Height: int(stat.Quantile(0.5, stat.LinInterp, heights, nil)),
+		Angle:  stat.Quantile(0.5, stat.LinInterp, angles, nil),
 	}
 }
 
@@ -158,28 +150,26 @@ func findExposureBounds(wndw *gocv.Window, img *gocv.Mat, showOutputWindow bool)
 	blGray := gocv.NewMat()
 	gocv.BilateralFilter(gray, &blGray, 11, 17, 17)
 
-	gocv.EqualizeHist(blGray, &blGray)
-
 	ignoreMask := gocv.NewMat()
-	gocv.Threshold(blGray, &ignoreMask, 240, 255, gocv.ThresholdBinary)
+	gocv.Threshold(blGray, &ignoreMask, 250, 255, gocv.ThresholdBinary)
 
 	gocv.Dilate(
 		ignoreMask,
 		&ignoreMask,
-		gocv.GetStructuringElement(gocv.MorphShape(0), image.Pt(6, 6)))
+		gocv.GetStructuringElement(gocv.MorphShape(0), image.Pt(15, 15)))
 
 	hsv := gocv.NewMat()
-	gocv.CvtColor(*img, &hsv, gocv.ColorBGRToHSV)
-	gocv.GaussianBlur(hsv, &hsv, image.Pt(5, 5), 0, 0, gocv.BorderDefault)
+	gocv.CvtColor(*img, &hsv, gocv.ColorBGRToGray)
+	gocv.Threshold(blGray, &hsv, 0, 255, gocv.ThresholdOtsu)
 
-	satMask := gocv.NewMat()
+	unexpMask := gocv.NewMat()
 	gocv.InRangeWithScalar(
-		hsv,
-		gocv.Scalar{Val1: 0, Val2: 0, Val3: 0},
-		gocv.Scalar{Val1: 255, Val2: 7, Val3: 255},
-		&satMask)
+		blGray,
+		gocv.Scalar{},
+		gocv.Scalar{Val1: 20, Val2: 20, Val3: 20},
+		&unexpMask)
 
-	gocv.BitwiseOr(ignoreMask, satMask, &ignoreMask)
+	gocv.BitwiseOr(ignoreMask, unexpMask, &ignoreMask)
 	gocv.BitwiseNot(ignoreMask, &ignoreMask)
 
 	wndw.IMShow(ignoreMask)
