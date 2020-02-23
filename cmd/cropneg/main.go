@@ -1,11 +1,14 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"gocv.io/x/gocv"
 	"gonum.org/v1/gonum/stat"
 	"image"
 	"image/color"
+	"log"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -60,7 +63,13 @@ func normaliseRectRotation(rawRects []gocv.RotatedRect) {
 	}
 }
 
-func medianRect(rects []gocv.RotatedRect) image.Rectangle {
+func medianRect(rects []gocv.RotatedRect) (image.Rectangle, error) {
+
+	var rect image.Rectangle
+
+	if len(rects) == 0 {
+		return rect, errors.New("rects is zero length")
+	}
 
 	normaliseRectRotation(rects)
 
@@ -95,17 +104,13 @@ func medianRect(rects []gocv.RotatedRect) image.Rectangle {
 	threeX := stat.Quantile(0.5, stat.LinInterp, threeXs, nil)
 	threeY := stat.Quantile(0.5, stat.LinInterp, threeYs, nil)
 
-	return image.Rectangle{
-		Min: image.Pt(
-			int(((oneX+zeroX)/2)*1.003),
-			int(((oneY+twoY)/2)*1.003)),
-		Max: image.Pt(
-			int(((threeX+twoX)/2)*0.997),
-			int(((threeY+zeroY)/2)*0.997)),
-	}
+	rect.Min = image.Pt(int(((oneX+zeroX)/2)*1.003), int(((oneY+twoY)/2)*1.003))
+	rect.Max = image.Pt(int(((threeX+twoX)/2)*0.997), int(((threeY+zeroY)/2)*0.997))
+
+	return rect, nil
 }
 
-func findExposureBounds(img *gocv.Mat, wndw *gocv.Window, showDebugWindow bool) image.Rectangle {
+func findExposureBounds(img *gocv.Mat, wndw *gocv.Window, showDebugWindow bool) (image.Rectangle, error) {
 
 	blGray := gocv.NewMat()
 	gocv.BilateralFilter(*img, &blGray, 11, 17, 17)
@@ -206,6 +211,10 @@ func findExposureBounds(img *gocv.Mat, wndw *gocv.Window, showDebugWindow bool) 
 }
 
 func main() {
+	os.Exit(cropNegative())
+}
+
+func cropNegative() int {
 
 	filename := flag.String("file", "", "scan to analyze")
 	debug := flag.Bool("d", false, "show debug window")
@@ -214,7 +223,7 @@ func main() {
 
 	if *filename == "" {
 		println("Please specify the scanned negative to process with command --file")
-		return
+		return 1
 	}
 
 	window := gocv.NewWindow("analyze")
@@ -227,7 +236,12 @@ func main() {
 		window.WaitKey(0)
 	}
 
-	cropRect := findExposureBounds(&gray, window, *debug)
+	cropRect, err := findExposureBounds(&gray, window, *debug)
+
+	if err != nil {
+		log.Printf("error finding exposure bounds: %s", err)
+		return 1
+	}
 
 	wbMask := gocv.NewMat()
 	gocv.Threshold(gray, &wbMask, 253, 0, gocv.ThresholdToZero)
@@ -241,5 +255,11 @@ func main() {
 	}
 
 	ext := filepath.Ext(*filename)
-	gocv.IMWrite(strings.TrimSuffix(*filename, ext)+"_cropped"+ext, img.Region(cropRect))
+	result := gocv.IMWrite(strings.TrimSuffix(*filename, ext)+"_cropped"+ext, img.Region(cropRect))
+
+	if result {
+		return 0
+	}
+
+	return 1
 }
