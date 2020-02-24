@@ -158,12 +158,9 @@ func findExposureBounds(img *gocv.Mat, wndw *gocv.Window, showDebugWindow bool) 
 
 	minCaptureArea := maxArea * 0.85
 
-	//functs := []func(binary *gocv.Mat) (gocv.RotatedRect, float64){findLargestContourRect}
-
 	var results []gocv.RotatedRect
 
 	lThreshold := float32(240)
-
 	for lThreshold > 0 {
 		binary := thresholdImage(blGray, lThreshold, ignoreMask)
 
@@ -204,10 +201,6 @@ func findExposureBounds(img *gocv.Mat, wndw *gocv.Window, showDebugWindow bool) 
 			}
 		}
 	}
-
-	/*for _, fun := range functs {
-
-	}*/
 
 	return medianRect(results)
 }
