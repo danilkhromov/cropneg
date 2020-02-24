@@ -158,50 +158,45 @@ func findExposureBounds(img *gocv.Mat, wndw *gocv.Window, showDebugWindow bool) 
 
 	minCaptureArea := maxArea * 0.85
 
-	functs := []func(binary *gocv.Mat) (gocv.RotatedRect, float64){findLargestContourRect}
-
 	var results []gocv.RotatedRect
 
-	for _, fun := range functs {
-		lThreshold := float32(240)
+	lThreshold := float32(240)
+	for lThreshold > 0 {
+		binary := thresholdImage(blGray, lThreshold, ignoreMask)
 
-		for lThreshold > 0 {
-			binary := thresholdImage(blGray, lThreshold, ignoreMask)
+		debugImg := gocv.NewMat()
+		gocv.CvtColor(binary, &debugImg, gocv.ColorGrayToBGR)
 
-			debugImg := gocv.NewMat()
-			gocv.CvtColor(binary, &debugImg, gocv.ColorGrayToBGR)
+		rect, area := findLargestContourRect(&binary)
 
-			rect, area := fun(&binary)
+		if area >= maxArea {
+			break
+		}
 
-			if area >= maxArea {
-				break
-			}
+		var debugLineColour color.RGBA
+		if area >= minCaptureArea {
+			results = append(results, rect)
+			lThreshold -= 5
 
-			var debugLineColour color.RGBA
-			if area >= minCaptureArea {
-				results = append(results, rect)
-				lThreshold -= 5
+			debugLineColour = color.RGBA{G: 255}
+		} else {
+			lThreshold -= 5
 
-				debugLineColour = color.RGBA{G: 255}
-			} else {
-				lThreshold -= 5
+			debugLineColour = color.RGBA{R: 255}
+		}
 
-				debugLineColour = color.RGBA{R: 255}
-			}
+		if showDebugWindow {
+			if rect.Contour != nil {
+				rectPoints := gocv.NewMat()
+				gocv.BoxPoints(rect, &rectPoints)
 
-			if showDebugWindow {
-				if rect.Contour != nil {
-					rectPoints := gocv.NewMat()
-					gocv.BoxPoints(rect, &rectPoints)
+				var cntr [][]image.Point
+				cntr = append(cntr, rect.Contour)
+				gocv.DrawContours(&debugImg, cntr, -1, debugLineColour, 3)
 
-					var cntr [][]image.Point
-					cntr = append(cntr, rect.Contour)
-					gocv.DrawContours(&debugImg, cntr, -1, debugLineColour, 3)
-
-					if showDebugWindow {
-						wndw.IMShow(debugImg)
-						wndw.WaitKey(1)
-					}
+				if showDebugWindow {
+					wndw.IMShow(debugImg)
+					wndw.WaitKey(1)
 				}
 			}
 		}
