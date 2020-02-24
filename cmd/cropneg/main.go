@@ -14,6 +14,8 @@ import (
 	"strings"
 )
 
+// Threshold image with provided threshold value and ignore mask.
+// Ignore mask is the outer bounds of scanned frame (film base combined with additional area surrounding it).
 func thresholdImage(img gocv.Mat, lThreshold float32, ignoreMask gocv.Mat) gocv.Mat {
 
 	binary := gocv.NewMat()
@@ -52,6 +54,7 @@ func findLargestContourRect(binary *gocv.Mat) (gocv.RotatedRect, float64) {
 	return largestRect, largestArea
 }
 
+// Normalises coordinates of all contours in slice so they are not rotated more than -45 degrees.
 func normaliseRectRotation(rawRects []gocv.RotatedRect) {
 
 	for i, rect := range rawRects {
@@ -63,6 +66,8 @@ func normaliseRectRotation(rawRects []gocv.RotatedRect) {
 	}
 }
 
+// Finds median coordinates of all contours in slice.
+// Returns rectangle which will be used to crop image.
 func medianRect(rects []gocv.RotatedRect) (image.Rectangle, error) {
 
 	var rect image.Rectangle
@@ -110,6 +115,10 @@ func medianRect(rects []gocv.RotatedRect) (image.Rectangle, error) {
 	return rect, nil
 }
 
+// Finds exposure bounds of scanned image.
+// Creates ignore mask for threshold method then gradually thresholds image
+// and collects each contour that fits in between min and max capture area.
+// Returns rectangle for crop calculated from median of all collected contours.
 func findExposureBounds(img *gocv.Mat, wndw *gocv.Window, showDebugWindow bool) (image.Rectangle, error) {
 
 	blGray := gocv.NewMat()
