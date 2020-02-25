@@ -38,17 +38,15 @@
 
 local darktable = require "darktable"
 
-local crop_command = "~/.cropneg/cropneg --file "
-
-function crop_negative_event(event, image)
-    crop_negative(image)
-end
+local crop_command = "~/.cropneg/cropneg -f "
 
 function crop_negative(image)
 
-    os.execute("mkdir -p " .. image.path .. "/cropped")
+    local full_filename = image.path .. "/" .. image.filename
+    darktable.print(full_filename)
 
-    local result = os.execute(crop_command .. image.path .. "/" .. image.filename)
+    local result = os.execute(crop_command .. full_filename .. " -n " .. full_filename)
+    darktable.print(crop_command .. full_filename .. " -n " .. full_filename)
     if result == true then
         return 1
     end
@@ -71,4 +69,27 @@ function apply_negative_crop(shortcut)
     darktable.print("Cropped " .. images_processed .. " out of " .. images_submitted .. " image(s)")
 end
 
-darktable.register_event("shortcut", apply_negative_crop, "Automatically crop selected negative scans")
+local enable_auto_crop = darktable.new_widget("check_button") {
+    label = "enable auto crop"
+}
+
+local crop_widget = darktable.new_widget("box") {
+    orientation = horizontal,
+    enable_auto_crop
+}
+
+darktable.register_lib("control_auto_crop_ui", "auto crop image on export", true, false, {
+    [darktable.gui.views.lighttable] = { "DT_UI_CONTAINER_PANEL_RIGHT_CENTER", 0 }
+}, crop_widget
+);
+
+darktable.register_event("intermediate-export-image",
+        function(event, image, filename, format, storage)
+
+            if not enable_auto_crop.value == true then
+                return
+            end
+
+            crop_negative(image)
+        end
+)
