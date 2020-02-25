@@ -222,7 +222,7 @@ func cropNegative() int {
 
 	debug := flag.Bool("d", false, "show debug window")
 	filename := flag.String("f", "", "scanned image to crop")
-	targetFilename := flag.String("n", "", "filename of cropped image")
+	targetFilename := flag.String("n", "", "filename with correct file extension of cropped image")
 
 	flag.Parse()
 
@@ -259,13 +259,12 @@ func cropNegative() int {
 		window.WaitKey(0)
 	}
 
-	ext := filepath.Ext(*filename)
-
 	var result bool
 	if *targetFilename == "" {
+		ext := filepath.Ext(*filename)
 		result = gocv.IMWrite(strings.TrimSuffix(*filename, ext)+"_cropped"+ext, img.Region(cropRect))
 	} else {
-		result = gocv.IMWrite(*targetFilename + ext, img.Region(cropRect))
+		result = gocv.IMWrite(*targetFilename, img.Region(cropRect))
 	}
 
 
