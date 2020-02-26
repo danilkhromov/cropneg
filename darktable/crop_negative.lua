@@ -21,54 +21,45 @@
 
     This script automatically crops negative scans that were imported into darktable.
     Cropping works best with scans from Epson flatbed scanner and with minimal cropping area.
-    Cropped images will be put into "cropped" folder inside the original import folder.
 
     ADDITIONAL SOFTWARE NEEDED FOR THIS SCRIPT
     * https://github.com/danilkhromov/cropneg
 
     USAGE
     * require this script from your main luarc file
-    * set shortcut for running the script in preferences -> shortcuts -> lua
-    * select images for cropping and use shortcut to run the script
-    * on finish message will be shown with number of successfully cropped images
+    * before export click on "enable auto crop" under the export tab
+    * export images
 
     CAVEATS
     * script works best with well exposed frames with clearly defined frame borders
+    * if the image cannot be cropped it will be saved in original size (no cropping)
 ]]
 
 local darktable = require "darktable"
 
-local crop_command = "~/.cropneg/cropneg --file "
+local crop_command = "~/.cropneg/cropneg -f "
 
-function crop_negative_event(event, image)
-    crop_negative(image)
-end
+local enable_auto_crop = darktable.new_widget("check_button") {
+    label = "enable auto crop"
+}
 
-function crop_negative(image)
+local crop_widget = darktable.new_widget("box") {
+    orientation = horizontal,
+    enable_auto_crop
+}
 
-    os.execute("mkdir -p " .. image.path .. "/cropped")
+darktable.register_lib("control_auto_crop_ui", "auto crop image on export", true, false, {
+    [darktable.gui.views.lighttable] = { "DT_UI_CONTAINER_PANEL_RIGHT_CENTER", 0 }
+}, crop_widget
+);
 
-    local result = os.execute(crop_command .. image.path .. "/" .. image.filename)
-    if result == true then
-        return 1
-    end
+darktable.register_event("intermediate-export-image",
+        function(event, image, filename, format, storage)
 
-    return 0
-end
+            if not enable_auto_crop.value == true then
+                return
+            end
 
-function apply_negative_crop(shortcut)
-
-    local images = darktable.gui.action_images
-    local images_processed = 0
-    local images_submitted = 0
-
-    for _, image in pairs(images) do
-        darktable.print("Cropping")
-        images_submitted = images_submitted + 1
-        images_processed = images_processed + crop_negative(image)
-    end
-
-    darktable.print("Cropped " .. images_processed .. " out of " .. images_submitted .. " image(s)")
-end
-
-darktable.register_event("shortcut", apply_negative_crop, "Automatically crop selected negative scans")
+            os.execute(crop_command .. image.path .. "/" .. image.filename .. " -n " .. filename)
+        end
+)
