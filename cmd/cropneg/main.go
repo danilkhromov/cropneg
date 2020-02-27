@@ -23,14 +23,8 @@ func thresholdImage(img gocv.Mat, lThreshold float32, ignoreMask gocv.Mat) gocv.
 
 	gocv.BitwiseAnd(ignoreMask, binary, &binary)
 
-	gocv.Dilate(
-		binary,
-		&binary,
-		gocv.GetStructuringElement(gocv.MorphRect, image.Pt(10, 10)))
-	gocv.Erode(
-		binary,
-		&binary,
-		gocv.GetStructuringElement(gocv.MorphRect, image.Pt(10, 10)))
+	gocv.Dilate(binary, &binary, gocv.GetStructuringElement(gocv.MorphRect, image.Pt(10, 10)))
+	gocv.Erode(binary, &binary, gocv.GetStructuringElement(gocv.MorphRect, image.Pt(10, 10)))
 
 	return binary
 }
@@ -126,38 +120,67 @@ func findExposureBounds(img *gocv.Mat, wndw *gocv.Window, showDebugWindow bool) 
 
 	ignoreMask := gocv.NewMat()
 	gocv.Threshold(blGray, &ignoreMask, 240, 255, gocv.ThresholdBinary)
+	gocv.Erode(ignoreMask, &ignoreMask, gocv.GetStructuringElement(gocv.MorphRect, image.Pt(5, 5)))
 
-	gocv.Dilate(
-		ignoreMask,
-		&ignoreMask,
-		gocv.GetStructuringElement(gocv.MorphRect, image.Pt(5, 5)))
-
-	gocv.GaussianBlur(ignoreMask, &ignoreMask, image.Pt(1, 1), 0, 0, gocv.BorderWrap)
+	//gocv.GaussianBlur(ignoreMask, &ignoreMask, image.Pt(1, 1), 0, 0, gocv.BorderWrap)
 
 	if showDebugWindow {
+		wndw.SetWindowTitle("Ignore mask")
 		wndw.IMShow(ignoreMask)
-		wndw.WaitKey(1)
+		wndw.WaitKey(0)
+	}
+
+	invThrsh := gocv.NewMat()
+	gocv.Threshold(blGray, &invThrsh, 200, 255, gocv.ThresholdToZeroInv)
+	gocv.Erode(invThrsh, &invThrsh, gocv.GetStructuringElement(gocv.MorphRect, image.Pt(10, 10)))
+
+	if showDebugWindow {
+		wndw.SetWindowTitle("Inverse threshold")
+		wndw.IMShow(invThrsh)
+		wndw.WaitKey(0)
 	}
 
 	thrsh := gocv.NewMat()
-	gocv.Threshold(blGray, &thrsh, 0, 255, gocv.ThresholdOtsu)
+	gocv.Threshold(blGray, &thrsh, 80, 255, gocv.ThresholdToZero)
+	gocv.Erode(thrsh, &thrsh, gocv.GetStructuringElement(gocv.MorphRect, image.Pt(10, 10)))
+
+	if showDebugWindow {
+		wndw.SetWindowTitle("Threshold")
+		wndw.IMShow(thrsh)
+		wndw.WaitKey(0)
+	}
+
+	gocv.BitwiseOr(invThrsh, thrsh, &invThrsh)
+
+	if showDebugWindow {
+		wndw.SetWindowTitle("Combined")
+		wndw.IMShow(invThrsh)
+		wndw.WaitKey(0)
+	}
 
 	unexpMask := gocv.NewMat()
 	gocv.InRangeWithScalar(
-		blGray,
+		invThrsh,
 		gocv.Scalar{},
 		gocv.Scalar{Val1: 20, Val2: 20, Val3: 20},
 		&unexpMask)
 
 	if showDebugWindow {
+		wndw.SetWindowTitle("Unexposed Mask")
 		wndw.IMShow(unexpMask)
 		wndw.WaitKey(0)
 	}
 
 	gocv.BitwiseOr(ignoreMask, unexpMask, &ignoreMask)
+	if showDebugWindow {
+		wndw.SetWindowTitle("Combined")
+		wndw.IMShow(ignoreMask)
+		wndw.WaitKey(0)
+	}
 	gocv.BitwiseNot(ignoreMask, &ignoreMask)
 
 	if showDebugWindow {
+		wndw.SetWindowTitle("Final ignore mask")
 		wndw.IMShow(ignoreMask)
 		wndw.WaitKey(0)
 	}
@@ -165,7 +188,7 @@ func findExposureBounds(img *gocv.Mat, wndw *gocv.Window, showDebugWindow bool) 
 	dims := img.Size()
 	maxArea := (float64(dims[0]) * 0.92) * (float64(dims[1]) * 0.92)
 
-	minCaptureArea := maxArea * 0.85
+	minCaptureArea := maxArea * 0.75
 
 	var results []gocv.RotatedRect
 
@@ -236,7 +259,7 @@ func cropNegative() int {
 	gray := gocv.IMRead(*filename, gocv.IMReadGrayScale)
 
 	if *debug {
-		window.ResizeWindow(800, 800)
+		window.ResizeWindow(1000, 800)
 		window.IMShow(img)
 		window.WaitKey(0)
 	}
@@ -255,6 +278,7 @@ func cropNegative() int {
 	if *debug {
 		gocv.Rectangle(&wbMask, cropRect, color.RGBA{}, 10)
 
+		window.SetWindowTitle("Result")
 		window.IMShow(wbMask)
 		window.WaitKey(0)
 	}
@@ -266,7 +290,6 @@ func cropNegative() int {
 	} else {
 		result = gocv.IMWrite(*targetFilename, img.Region(cropRect))
 	}
-
 
 	if result {
 		return 0
