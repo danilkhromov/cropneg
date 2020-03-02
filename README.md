@@ -22,6 +22,7 @@ and [this](https://www.darktable.org/usermanual/en/lua_chapter.html).
 ### Usage
 In darktable select `enable auto crop` checkbox located under the export tab. Selected images will be cropped 
 automatically in the export process.
+
 ![](darktable.png) 
 
 ---
