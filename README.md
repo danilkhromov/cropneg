@@ -3,7 +3,7 @@
 cropneg is a [darktable](https://www.darktable.org/) plugin that automatically crops negative scans by exposed area bounds.
 Main application is written in go using [GoCV](https://github.com/hybridgroup/gocv) library.
  
-This project was inspired by [this](https://gist.github.com/stecman/91cb5d28d330550a1dc56fa29215cb85) proof of concept.
+The project was inspired by [this](https://gist.github.com/stecman/91cb5d28d330550a1dc56fa29215cb85) proof of concept.
 
 ### How it works
 Application tries to find exposure bounds of provided image by gradually thresholding it.
