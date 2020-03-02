@@ -19,6 +19,11 @@ Place the `crop_negative.lua` in the `$HOME/.config/darktable/lua` and then add 
 For more information about the lua scripts for darktable see [this](https://github.com/darktable-org/lua-scripts#enabling) 
 and [this](https://www.darktable.org/usermanual/en/lua_chapter.html).
 
+### Usage
+In darktable select `enable auto crop` checkbox located under the export tab. Selected images will be cropped 
+automatically in the export process.
+![](darktable.png) 
+
 ---
 #### Notes
 Currently this application can run on linux.
