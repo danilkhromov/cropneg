@@ -37,7 +37,7 @@
 
 local darktable = require "darktable"
 
-local crop_command = "~/.cropneg/cropneg -f "
+local crop_command = "~/bin/cropneg -f "
 
 local enable_auto_crop = darktable.new_widget("check_button") {
     label = "enable auto crop"
